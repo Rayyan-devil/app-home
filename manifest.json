@@ -8,8 +8,8 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "[https://cdn-icons-png.flaticon.com/512/2454/2454271.png](https://cdn-icons-png.flaticon.com/512/2454/2454271.png)",
-      "sizes": "512xl512",
+      "src": "https://cdn-icons-png.flaticon.com/512/2454/2454271.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
