@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital & Cash Payment Entry</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #121212; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; background: #1e1e1e; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { text-align: center; margin-bottom: 20px; font-weight: 600; color: #bb86fc; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; font-size: 14px; color: #a0a0a0; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #333; background: #2d2d2d; color: #fff; border-radius: 6px; font-size: 16px; outline: none; }
+        input:focus, select:focus, textarea:focus { border-color: #bb86fc; }
+        .btn-submit { width: 100%; padding: 14px; background: #03dac6; color: #000; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; transition: 0.2s; }
+        .btn-submit:active { transform: scale(0.98); background: #01b09e; }
+        .status-badge { text-align: center; padding: 8px; border-radius: 4px; font-size: 14px; margin-bottom: 15px; display: none; }
+        .online { background: #1b5e20; color: #c8e6c9; }
+        .offline { background: #b71c1c; color: #ffcdd2; }
+        .sync-counter { text-align: center; font-size: 14px; color: #ffb74d; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Digital & Cash Payment</h2>
+    
+    <div id="networkStatus" class="status-badge online">Online Mode</div>
+    <div id="syncStatus" class="sync-counter"></div>
+
+    <form id="paymentForm">
+        <div class="form-group">
+            <label>1. Date</label>
+            <input type="date" id="date" required>
+        </div>
+        <div class="form-group">
+            <label>2. Contact Number</label>
+            <input type="tel" id="contact" placeholder="e.g. 03211234567">
+        </div>
+        <div class="form-group">
+            <label>3. Payment Method</label>
+            <select id="paymentMethod" required>
+                <option value="CASH">CASH</option>
+                <option value="EASYPAISA">EASYPAISA</option>
+                <option value="JAZZCASH">JAZZCASH</option>
+                <option value="UBL BANK">UBL BANK</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>4. Comment / Description</label>
+            <textarea id="description" rows="3" placeholder="Enter comments here..." required></textarea>
+        </div>
+        <div class="form-group">
+            <label>5. Amount</label>
+            <input type="number" id="amount" placeholder="Enter amount" required>
+        </div>
+        <div class="form-group">
+            <label>6. Transaction Type (Credit/Debit)</label>
+            <select id="type" required>
+                <option value="LIYA">LIYA (Cash In / Received)</option>
+                <option value="DIYA">DIYA (Cash Out / Paid)</option>
+                <option value="LANA">LANA (Receivable / Udhaar)</option>
+                <option value="DANA">DANA (Payable / Udhaar)</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-submit">Save Entry</button>
+    </form>
+</div>
+
+<script>
+    // REPLACE THIS URL WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
+    const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+    // Set today's date automatically
+    document.getElementById('date').valueAsDate = new Date();
+
+    // Check Network Status
+    function updateNetworkStatus() {
+        const badge = document.getElementById('networkStatus');
+        if (navigator.onLine) {
+            badge.textContent = "Online Mode";
+            badge.className = "status-badge online";
+            badge.style.display = "block";
+            syncOfflineEntries();
+        } else {
+            badge.textContent = "Offline Mode (Saved Locally)";
+            badge.className = "status-badge offline";
+            badge.style.display = "block";
+        }
+    }
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    updateNetworkStatus();
+
+    // Handle Form Submission
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        let amount = parseFloat(document.getElementById('amount').value);
+        let type = document.getElementById('type').value;
+        
+        // Auto convert amount to negative if it's DIYA or DANA based on your requirement
+        if (type === 'DIYA' || type === 'DANA') {
+            if (amount > 0) amount = -amount;
+        } else {
+            if (amount < 0) amount = Math.abs(amount);
+        }
+
+        const entry = {
+            date: document.getElementById('date').value,
+            contact: document.getElementById('contact').value,
+            paymentMethod: document.getElementById('paymentMethod').value,
+            description: document.getElementById('description').value,
+            amount: amount,
+            type: type,
+            id: Date.now()
+        };
+
+        if (navigator.onLine) {
+            sendToServer(entry);
+        } else {
+            saveToLocalStorage(entry);
+        }
+    });
+
+    function sendToServer(entry) {
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // standard workaround for apps script CORS
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(entry)
+        })
+        .then(() => {
+            alert("Entry Saved to Google Sheet!");
+            resetForm();
+        })
+        .catch(err => {
+            console.error(err);
+            saveToLocalStorage(entry);
+            alert("Failed to send to server. Saved to offline queue instead.");
+        });
+    }
+
+    function saveToLocalStorage(entry) {
+        let entries = JSON.parse(localStorage.getItem('offlineEntries')) || [];
+        entries.push(entry);
+        localStorage.setItem('offlineEntries', JSON.stringify(entries));
+        alert("Saved Offline! It will sync automatically when you are connected to the Internet.");
+        resetForm();
+        updateSyncCounter();
+    }
+
+    function syncOfflineEntries() {
+        let entries = JSON.parse(localStorage.getItem('offlineEntries')) || [];
+        if (entries.length === 0) return;
+
+        document.getElementById('syncStatus').textContent = `Syncing ${entries.length} offline records...`;
+        document.getElementById('syncStatus').style.display = "block";
+
+        // Send promises one by one or concurrently
+        let promises = entries.map(entry => {
+            return fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry)
+            }).then(() => entry.id);
+        });
+
+        Promise.all(promises).then(completedIds => {
+            let currentEntries = JSON.parse(localStorage.getItem('offlineEntries')) || [];
+            // filter out completed ones
+            let remaining = currentEntries.filter(e => !completedIds.includes(e.id));
+            if (remaining.length === 0) {
+                localStorage.removeItem('offlineEntries');
+                document.getElementById('syncStatus').textContent = "All offline entries synced successfully!";
+                setTimeout(() => { document.getElementById('syncStatus').style.display = "none"; }, 3000);
+            } else {
+                localStorage.setItem('offlineEntries', JSON.stringify(remaining));
+            }
+            updateSyncCounter();
+        });
+    }
+
+    function updateSyncCounter() {
+        let entries = JSON.parse(localStorage.getItem('offlineEntries')) || [];
+        const counter = document.getElementById('syncStatus');
+        if (entries.length > 0) {
+            counter.textContent = `${entries.length} pending offline entries to sync.`;
+            counter.style.display = "block";
+        } else {
+            counter.style.display = "none";
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('contact').value = '';
+        document.getElementById('description').value = '';
+        document.getElementById('amount').value = '';
+        document.getElementById('date').valueAsDate = new Date();
+    }
+
+    // Register Service Worker for PWA (Add to home screen functionality)
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js');
+        });
+    }
+</script>
+</body>
+</html>
