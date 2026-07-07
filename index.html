@@ -6,8 +6,9 @@
     <title>Digital & Cash Payment Entry</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a1a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- FIXED: Updated deprecated apple meta tag -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="data:,">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #121212; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
@@ -73,13 +74,11 @@
 </div>
 
 <script>
-    // REPLACE THIS URL WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
-    const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+    // 🚨 WARNING: ISKO APNE ASLI GOOGLE SCRIPT URL SE REPLACE KAREIN (Jo https://script.google.com/macros/s/.../exec par khatam hota hai)
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTthLTFj9tUneBQZLtCZH0ovPZxjDAMiRTbT2U9GXzMJ0_giVvoKiWaGGOkXE02JZ4zg/exec";
 
-    // Set today's date automatically
     document.getElementById('date').valueAsDate = new Date();
 
-    // Check Network Status
     function updateNetworkStatus() {
         const badge = document.getElementById('networkStatus');
         if (navigator.onLine) {
@@ -97,14 +96,12 @@
     window.addEventListener('offline', updateNetworkStatus);
     updateNetworkStatus();
 
-    // Handle Form Submission
     document.getElementById('paymentForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
         let amount = parseFloat(document.getElementById('amount').value);
         let type = document.getElementById('type').value;
         
-        // Auto convert amount to negative if it's DIYA or DANA based on your requirement
         if (type === 'DIYA' || type === 'DANA') {
             if (amount > 0) amount = -amount;
         } else {
@@ -129,9 +126,10 @@
     });
 
     function sendToServer(entry) {
+        // FIXED: Google Script ke liye standard approach bina cors fetch errors ke
         fetch(SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors', // standard workaround for apps script CORS
+            mode: 'no-cors', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(entry)
         })
@@ -162,7 +160,6 @@
         document.getElementById('syncStatus').textContent = `Syncing ${entries.length} offline records...`;
         document.getElementById('syncStatus').style.display = "block";
 
-        // Send promises one by one or concurrently
         let promises = entries.map(entry => {
             return fetch(SCRIPT_URL, {
                 method: 'POST',
@@ -174,7 +171,6 @@
 
         Promise.all(promises).then(completedIds => {
             let currentEntries = JSON.parse(localStorage.getItem('offlineEntries')) || [];
-            // filter out completed ones
             let remaining = currentEntries.filter(e => !completedIds.includes(e.id));
             if (remaining.length === 0) {
                 localStorage.removeItem('offlineEntries');
@@ -205,7 +201,6 @@
         document.getElementById('date').valueAsDate = new Date();
     }
 
-    // Register Service Worker for PWA (Add to home screen functionality)
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js');
