@@ -1,8 +1,7 @@
-const CACHE_NAME = 'ledger-cache-v1';
+const CACHE_NAME = 'ledger-cache-v2';
 const ASSETS = [
   'index.html',
-  'manifest.json',
-  '[https://cdn-icons-png.flaticon.com/512/2454/2454271.png](https://cdn-icons-png.flaticon.com/512/2454/2454271.png)'
+  'manifest.json'
 ];
 
 self.addEventListener('install', (e) => {
